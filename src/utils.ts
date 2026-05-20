@@ -1,6 +1,11 @@
 import { createHash } from 'crypto'
 
 const FILE_MIME_TYPES: Record<string, string> = {
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
     mp4: 'video/mp4',
     webm: 'video/webm',
     mov: 'video/quicktime',
@@ -89,5 +94,7 @@ export function randomFileName(fileName: string): string {
 }
 
 export function getMimeTypeFromFilename(fileName: string): string | undefined {
-    return FILE_MIME_TYPES[fileName.toLowerCase().split('.').pop() ?? '']
+    const index = fileName.lastIndexOf('.')
+    if (index < 0) return undefined
+    return FILE_MIME_TYPES[fileName.slice(index + 1).toLowerCase()]
 }

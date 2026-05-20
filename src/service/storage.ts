@@ -337,9 +337,12 @@ export class ChatLunaStorageService extends Service {
             randomName =
                 (randomName.split('.')?.[0] ?? randomName) + '.' + imageType
         }
+        const imageMime = imageType
+            ? getMimeTypeFromFilename(`file.${imageType}`)
+            : undefined
         const fileType =
             mimeType ??
-            getImageType(buffer) ??
+            imageMime ??
             getMimeTypeFromFilename(randomName)
 
         // Upload to storage backend
@@ -437,13 +440,15 @@ export class ChatLunaStorageService extends Service {
             }
 
             const randomName = randomFileName(filename)
+            const fileType =
+                meta.mimeType ?? getMimeTypeFromFilename(randomName)
             const result = await this.storageBackend.uploadStream(
                 createReadStream(tempPath),
                 randomName,
                 {
                     size,
                     hash: digest,
-                    mimeType: meta.mimeType
+                    mimeType: fileType
                 }
             )
 
@@ -459,7 +464,7 @@ export class ChatLunaStorageService extends Service {
                 id: randomName.split('.')[0],
                 path: result.key,
                 name: randomName,
-                type: meta.mimeType,
+                type: fileType,
                 expireTime,
                 size,
                 accessTime: currentTime,
