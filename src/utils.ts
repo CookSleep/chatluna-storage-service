@@ -1,5 +1,15 @@
 import { createHash } from 'crypto'
 
+const FILE_MIME_TYPES: Record<string, string> = {
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    mov: 'video/quicktime',
+    mp3: 'audio/mpeg',
+    m4a: 'audio/mp4',
+    wav: 'audio/wav',
+    ogg: 'audio/ogg'
+}
+
 /**
  * Computes the SHA-256 hash of the given buffer and returns it as a hex string.
  * SHA-256 is cryptographically modern and collision-resistant.
@@ -76,4 +86,8 @@ export function randomFileName(fileName: string): string {
 
     const additionalRandom = Math.random().toString(36).substring(2, 10)
     return `${timestamp}_${additionalRandom}${extension}`
+}
+
+export function getMimeTypeFromFilename(fileName: string): string | undefined {
+    return FILE_MIME_TYPES[fileName.toLowerCase().split('.').pop() ?? '']
 }

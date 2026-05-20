@@ -1,6 +1,7 @@
 import { Context } from 'koishi'
 import { Config, logger } from '../index.js'
 import type {} from '../service/storage.js'
+import { getMimeTypeFromFilename } from '../utils.js'
 import type {} from '@koishijs/plugin-server'
 
 export function apply(ctx: Context, config: Config) {
@@ -26,11 +27,13 @@ export function apply(ctx: Context, config: Config) {
                     return
                 }
 
+                const mime =
+                    fileInfo.type ||
+                    getMimeTypeFromFilename(fileInfo.name) ||
+                    'application/octet-stream'
+
                 // For local files or files without public URL, serve directly
-                koa.set(
-                    'Content-Type',
-                    fileInfo.type || 'application/octet-stream'
-                )
+                koa.set('Content-Type', mime)
                 koa.set('Content-Length', fileInfo.size.toString())
                 koa.set(
                     'Content-Disposition',

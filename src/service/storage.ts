@@ -7,7 +7,12 @@ import { pipeline } from 'stream/promises'
 import { Context, Service, Time } from 'koishi'
 import { Config, logger } from '..'
 import { TempFileInfo, TempFileInfoWithData } from '../types'
-import { computeHash, getImageType, randomFileName } from '../utils'
+import {
+    computeHash,
+    getImageType,
+    getMimeTypeFromFilename,
+    randomFileName
+} from '../utils'
 import {
     StorageBackend,
     createStorageBackend,
@@ -326,14 +331,16 @@ export class ChatLunaStorageService extends Service {
             }
         }
 
-        const imageType = getImageType(buffer, true, true)
-        const fileType = mimeType ?? getImageType(buffer)
-
         let randomName = randomFileName(filename)
+        const imageType = getImageType(buffer, true, true)
         if (imageType != null) {
             randomName =
                 (randomName.split('.')?.[0] ?? randomName) + '.' + imageType
         }
+        const fileType =
+            mimeType ??
+            getImageType(buffer) ??
+            getMimeTypeFromFilename(randomName)
 
         // Upload to storage backend
         const result = await this.storageBackend.upload(buffer, randomName)
