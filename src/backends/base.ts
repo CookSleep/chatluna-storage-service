@@ -46,6 +46,13 @@ export interface StorageBackend {
     download(key: string): Promise<Buffer>
 
     /**
+     * Download a file from storage as a readable stream.
+     * @param key File key/path
+     * @returns Readable stream of file content
+     */
+    downloadStream(key: string): NodeJS.ReadableStream
+
+    /**
      * Delete a file from storage
      * @param key File key/path
      */

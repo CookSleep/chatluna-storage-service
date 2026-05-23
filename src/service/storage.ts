@@ -7,12 +7,7 @@ import { pipeline } from 'stream/promises'
 import { Context, Service, Time } from 'koishi'
 import { Config, logger } from '..'
 import { TempFileInfo, TempFileInfoWithData } from '../types'
-import {
-    computeHash,
-    getImageType,
-    getMimeTypeFromFilename,
-    randomFileName
-} from '../utils'
+import { computeHash, detectFileType, randomFileName } from '../utils'
 import {
     StorageBackend,
     createStorageBackend,
@@ -229,6 +224,17 @@ export class ChatLunaStorageService extends Service {
         return fs.readFile(file.path)
     }
 
+    private downloadFileStream(file: TempFileInfo): NodeJS.ReadableStream {
+        const storageType = file.storageType ?? 'local'
+        if (
+            storageType !== 'local' &&
+            this.storageBackend.type === storageType
+        ) {
+            return this.storageBackend.downloadStream(file.path)
+        }
+        return createReadStream(file.path)
+    }
+
     private async removeFile(file: TempFileInfo): Promise<void> {
         try {
             await this.deleteFileFromBackend(file)
@@ -331,19 +337,13 @@ export class ChatLunaStorageService extends Service {
             }
         }
 
+        const detected = await detectFileType(buffer)
         let randomName = randomFileName(filename)
-        const imageType = getImageType(buffer, true, true)
-        if (imageType != null) {
+        if (detected) {
             randomName =
-                (randomName.split('.')?.[0] ?? randomName) + '.' + imageType
+                (randomName.split('.')[0] ?? randomName) + '.' + detected.ext
         }
-        const imageMime = imageType
-            ? getMimeTypeFromFilename(`file.${imageType}`)
-            : undefined
-        const fileType =
-            mimeType ??
-            imageMime ??
-            getMimeTypeFromFilename(randomName)
+        const fileType = mimeType ?? detected?.mime
 
         // Upload to storage backend
         const result = await this.storageBackend.upload(buffer, randomName)
@@ -440,15 +440,13 @@ export class ChatLunaStorageService extends Service {
             }
 
             const randomName = randomFileName(filename)
-            const fileType =
-                meta.mimeType ?? getMimeTypeFromFilename(randomName)
             const result = await this.storageBackend.uploadStream(
                 createReadStream(tempPath),
                 randomName,
                 {
                     size,
                     hash: digest,
-                    mimeType: fileType
+                    mimeType: meta.mimeType
                 }
             )
 
@@ -464,7 +462,7 @@ export class ChatLunaStorageService extends Service {
                 id: randomName.split('.')[0],
                 path: result.key,
                 name: randomName,
-                type: fileType,
+                type: meta.mimeType,
                 expireTime,
                 size,
                 accessTime: currentTime,
@@ -557,6 +555,49 @@ export class ChatLunaStorageService extends Service {
             await this.ctx.database.remove('chatluna_storage_temp', { id })
             this.removeFromLRU(id)
             return null
+        }
+    }
+
+    /**
+     * Get a temp file's metadata and a readable stream for its content.
+     * Use this for serving files over HTTP to avoid loading entire files into memory.
+     */
+    async getTempFileStream(
+        id: string
+    ): Promise<(TempFileInfo & { stream: NodeJS.ReadableStream; url: string }) | null> {
+        let fileInfo = await this.ctx.database.get('chatluna_storage_temp', {
+            id
+        })
+
+        if (fileInfo.length === 0) {
+            fileInfo = await this.ctx.database.get('chatluna_storage_temp', {
+                name: id
+            })
+        }
+
+        if (fileInfo.length === 0) return null
+
+        const file = fileInfo[0]
+
+        const currentTime = new Date()
+        await this.ctx.database.set(
+            'chatluna_storage_temp',
+            { id: file.id },
+            {
+                accessTime: currentTime,
+                accessCount: file.accessCount + 1
+            }
+        )
+
+        this.addToLRU(file.id)
+
+        const url = file.publicUrl ?? `${this.backendPath}/temp/${file.name}`
+        return {
+            ...file,
+            accessTime: currentTime,
+            accessCount: file.accessCount + 1,
+            stream: this.downloadFileStream(file),
+            url
         }
     }
 

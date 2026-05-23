@@ -1,3 +1,4 @@
+import { Readable } from 'stream'
 import {
     createStreamingRequestInit,
     readStream,
@@ -123,6 +124,16 @@ export class WebDAVStorageBackend implements StorageBackend {
         }
 
         return Buffer.from(await response.arrayBuffer())
+    }
+
+    downloadStream(key: string): NodeJS.ReadableStream {
+        const self = this
+        return Readable.from(
+            (async function* () {
+                const buf = await self.download(key)
+                yield buf
+            })()
+        )
     }
 
     async delete(key: string): Promise<void> {

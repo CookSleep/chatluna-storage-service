@@ -1,4 +1,5 @@
 import { createHmac, createHash } from 'crypto'
+import { Readable } from 'stream'
 import {
     createStreamingRequestInit,
     readStream,
@@ -154,6 +155,16 @@ export class S3StorageBackend implements StorageBackend {
         }
 
         return Buffer.from(await response.arrayBuffer())
+    }
+
+    downloadStream(key: string): NodeJS.ReadableStream {
+        const self = this
+        return Readable.from(
+            (async function* () {
+                const buf = await self.download(key)
+                yield buf
+            })()
+        )
     }
 
     async delete(key: string): Promise<void> {

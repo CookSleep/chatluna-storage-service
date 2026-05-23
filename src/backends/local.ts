@@ -1,4 +1,4 @@
-import { createWriteStream } from 'fs'
+import { createReadStream, createWriteStream } from 'fs'
 import { join } from 'path'
 import fs from 'fs/promises'
 import { pipeline } from 'stream/promises'
@@ -41,6 +41,10 @@ export class LocalStorageBackend implements StorageBackend {
 
     async download(key: string): Promise<Buffer> {
         return fs.readFile(key)
+    }
+
+    downloadStream(key: string): NodeJS.ReadableStream {
+        return createReadStream(key)
     }
 
     async delete(key: string): Promise<void> {

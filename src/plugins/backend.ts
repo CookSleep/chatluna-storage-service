@@ -1,7 +1,6 @@
 import { Context } from 'koishi'
 import { Config, logger } from '../index.js'
 import type {} from '../service/storage.js'
-import { getMimeTypeFromFilename } from '../utils.js'
 import type {} from '@koishijs/plugin-server'
 
 export function apply(ctx: Context, config: Config) {
@@ -14,7 +13,8 @@ export function apply(ctx: Context, config: Config) {
             const { id } = koa.params
 
             try {
-                const fileInfo = await ctx.chatluna_storage.getTempFile(id)
+                const fileInfo =
+                    await ctx.chatluna_storage.getTempFileStream(id)
 
                 if (!fileInfo) {
                     koa.status = 404
@@ -27,19 +27,16 @@ export function apply(ctx: Context, config: Config) {
                     return
                 }
 
-                const mime =
-                    fileInfo.type ||
-                    getMimeTypeFromFilename(fileInfo.name) ||
-                    'application/octet-stream'
-
-                // For local files or files without public URL, serve directly
-                koa.set('Content-Type', mime)
+                koa.set(
+                    'Content-Type',
+                    fileInfo.type || 'application/octet-stream'
+                )
                 koa.set('Content-Length', fileInfo.size.toString())
                 koa.set(
                     'Content-Disposition',
                     `inline; filename="${fileInfo.name}"`
                 )
-                koa.body = await fileInfo.data
+                koa.body = fileInfo.stream
             } catch (error) {
                 logger.error('Error serving temp file:', error)
                 koa.status = 500

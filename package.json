@@ -86,5 +86,8 @@
                 "chatluna_storage"
             ]
         }
+    },
+    "dependencies": {
+        "file-type": "16.5.4"
     }
 }
